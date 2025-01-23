@@ -1,0 +1,113 @@
+﻿<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">SocialBook</a>
+        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</div>
+
+<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
+    <nav class="flex-column">
+        @if (isAuthenticated)
+        {
+            <!-- Options for authenticated users -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/">
+                    <span class="oi oi-home" aria-hidden="true"></span> Home
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/profile">
+                    <span class="oi oi-person" aria-hidden="true"></span> Profile
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/posts">
+                    <span class="oi oi-list-rich" aria-hidden="true"></span> Posts
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <button class="nav-link btn btn-link text-danger" @onclick="Logout">
+                    <span class="oi oi-account-logout" aria-hidden="true"></span> Logout
+                </button>
+            </div>
+        }
+        else
+        {
+            <!-- Options for unauthenticated users -->
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/login">
+                    <span class="oi oi-account-login" aria-hidden="true"></span> Login
+                </NavLink>
+            </div>
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="/register">
+                    <span class="oi oi-person" aria-hidden="true"></span> Register
+                </NavLink>
+            </div>
+        }
+    </nav>
+</div>
+
+@code {
+    private bool collapseNavMenu = true;
+    private bool isAuthenticated;
+
+    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+
+        // Subscribe to authentication state changes
+        if (AuthenticationStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
+        {
+            customAuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        }
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        InvokeAsync(async () =>
+        {
+            var authState = await task;
+            isAuthenticated = authState.User.Identity?.IsAuthenticated ?? false;
+            StateHasChanged();
+        });
+    }
+
+    private async Task Logout()
+    {
+        if (AuthenticationStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
+        {
+            customAuthStateProvider.SetToken(null);
+        }
+
+        isAuthenticated = false;
+
+        // Navigate to login page
+        NavigationManager.NavigateTo("/login");
+        await Task.Yield();
+    }
+
+    [Inject]
+    private AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+
+    [Inject]
+    private NavigationManager NavigationManager { get; set; }
+
+    public void Dispose()
+    {
+        if (AuthenticationStateProvider is CustomAuthenticationStateProvider customAuthStateProvider)
+        {
+            customAuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        }
+    }
+}

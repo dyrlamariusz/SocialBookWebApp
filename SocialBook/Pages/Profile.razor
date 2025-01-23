@@ -1,0 +1,26 @@
+﻿@page "/profile"
+@attribute [Authorize]
+@inject PeopleService PeopleService
+
+<h3>Profile</h3>
+
+@if (profile == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+    <p>Full Name: @profile.fullName</p>
+    <p>Bio: @profile.bio</p>
+}
+
+<button @onclick="LoadProfile">Load Profile</button>
+
+@code {
+    private dynamic profile;
+
+    private async Task LoadProfile()
+    {
+        profile = await PeopleService.GetProfile("user-id");
+    }
+}

@@ -1,0 +1,30 @@
+﻿@page "/posts"
+@attribute [Authorize]
+@inject PostService PostService
+
+<h3>Posts</h3>
+
+@if (posts == null)
+{
+    <p>Loading posts...</p>
+}
+else
+{
+    <ul>
+        @foreach (var post in posts)
+        {
+            <li>@post.content</li>
+        }
+    </ul>
+}
+
+<button @onclick="LoadPosts">Load Posts</button>
+
+@code {
+    private dynamic posts;
+
+    private async Task LoadPosts()
+    {
+        posts = await PostService.GetAllPosts();
+    }
+}

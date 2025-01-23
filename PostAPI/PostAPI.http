@@ -1,0 +1,6 @@
+@PostAPI_HostAddress = https://localhost:5003
+
+GET {{PostAPI_HostAddress}}
+Accept: application/json
+
+###

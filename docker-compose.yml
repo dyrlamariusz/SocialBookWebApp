@@ -1,0 +1,58 @@
+version: "3.9"
+services:
+  identity-api:
+    build:
+      context: ./IdentityAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5001:8080" # Mapowanie portów: host:kontener
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=IdentityAPIDb;User=sa;Password=YourPassword123;
+    depends_on:
+      - sqlserver
+    networks:
+      - socialnetwork
+
+  people-api:
+    build:
+      context: ./PeopleAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5002:8080" # Mapowanie portów: host:kontener
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PeopleAPIDb;User=sa;Password=YourPassword123;
+    depends_on:
+      - sqlserver
+    networks:
+      - socialnetwork
+
+  post-api:
+    build:
+      context: ./PostAPI
+      dockerfile: Dockerfile
+    ports:
+      - "5003:8080" # Mapowanie portów: host:kontener
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=PostAPIDb;User=sa;Password=YourPassword123;
+    depends_on:
+      - sqlserver
+    networks:
+      - socialnetwork
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    ports:
+      - "1433:1433"
+    environment:
+      SA_PASSWORD: "YourPassword123"
+      ACCEPT_EULA: "Y"
+    networks:
+      - socialnetwork
+
+networks:
+  socialnetwork:
+    driver: bridge
