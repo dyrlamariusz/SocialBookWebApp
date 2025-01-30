@@ -1,4 +1,5 @@
-using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +14,13 @@ builder.Services.AddScoped<AuthenticationStateProvider>(provider => provider.Get
 
 // Konfiguracja autoryzacji
 builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped(sp =>
+{
+    var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost:5001/") }; // Change to your Identity API URL
+    return httpClient;
+});
+
+builder.Services.AddScoped<ProtectedLocalStorage>(); // ✅ Add to Dependency Injection
 
 // Dodaj HttpClient
 builder.Services.AddHttpClient<IdentityService>(client =>
@@ -33,8 +41,6 @@ builder.Services.AddHttpClient<PostService>(client =>
     client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", authProvider.GetToken());
     client.BaseAddress = new Uri("http://localhost:5003/api/");
 });
-
-
 
 var app = builder.Build();
 

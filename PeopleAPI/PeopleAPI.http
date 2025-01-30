@@ -1,4 +1,4 @@
-@PeopleAPI_HostAddress = https://localhost:5002
+@PeopleAPI_HostAddress = http://localhost:5002
 
 GET {{PeopleAPI_HostAddress}}
 Accept: application/json

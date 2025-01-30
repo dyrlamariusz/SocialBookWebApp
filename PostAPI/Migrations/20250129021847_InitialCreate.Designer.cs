@@ -12,7 +12,7 @@ using PostAPI.Data;
 namespace PostAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250123000509_InitialCreate")]
+    [Migration("20250129021847_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

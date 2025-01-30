@@ -1,4 +1,5 @@
 ﻿using IdentityAPI.Models;
+using IdentityAPI.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,14 +20,19 @@ namespace IdentityAPI.Controllers
 
         public AuthController(UserManager<ApplicationUser> userManager, IConfiguration configuration)
         {
-            _userManager = userManager;
-            _configuration = configuration;
+            _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
         // Rejestracja użytkownika
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
+            if (request == null)
+            {
+                return BadRequest("Nieprawidłowe dane rejestracji.");
+            }
+
             // Sprawdzenie, czy użytkownik już istnieje
             var existingUser = await _userManager.FindByNameAsync(request.Username);
             if (existingUser != null)
@@ -36,12 +42,12 @@ namespace IdentityAPI.Controllers
 
             var user = new ApplicationUser
             {
-                UserName = request.Username,
-                Email = request.Email,
-                FullName = request.FullName
+                UserName = request.Username ?? string.Empty,
+                Email = request.Email ?? string.Empty,
+                FullName = request.FullName ?? string.Empty
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await _userManager.CreateAsync(user, request.Password ?? string.Empty);
             if (!result.Succeeded)
             {
                 return BadRequest(result.Errors);
@@ -54,6 +60,11 @@ namespace IdentityAPI.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginRequest request)
         {
+            if (request == null)
+            {
+                return BadRequest("Nieprawidłowe dane logowania.");
+            }
+
             // Znalezienie użytkownika
             var user = await _userManager.FindByNameAsync(request.Username);
             if (user == null || !await _userManager.CheckPasswordAsync(user, request.Password))
@@ -66,18 +77,20 @@ namespace IdentityAPI.Controllers
             return Ok(new { Token = token });
         }
 
-        // Sprawdzanie danych obecnego użytkownika
         [HttpGet("me")]
-        [Authorize]
+        [Authorize] 
         public async Task<IActionResult> GetCurrentUser()
         {
-            // Pobieranie danych zalogowanego użytkownika
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var user = await _userManager.FindByIdAsync(userId);
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized("User ID not found in token.");
+            }
 
+            var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
-                return NotFound("Użytkownik nie znaleziony.");
+                return NotFound("User not found.");
             }
 
             return Ok(new
@@ -89,16 +102,25 @@ namespace IdentityAPI.Controllers
             });
         }
 
+
+
         private string GenerateJwtToken(ApplicationUser user)
         {
             var jwtSettings = _configuration.GetSection("JwtSettings");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Secret"]));
+            var secret = jwtSettings["Secret"];
+
+            if (string.IsNullOrEmpty(secret))
+            {
+                throw new InvalidOperationException("Brak klucza JWT w konfiguracji.");
+            }
+
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
 
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Sub, user.UserName ?? string.Empty),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(ClaimTypes.NameIdentifier, user.Id)
+                new Claim(ClaimTypes.NameIdentifier, user.Id ?? string.Empty)
             };
 
             var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -113,19 +135,28 @@ namespace IdentityAPI.Controllers
 
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
+
         public class RegisterRequest
         {
-            public string Username { get; set; }
-            public string Email { get; set; }
-            public string FullName { get; set; }
-            public string Password { get; set; }
+            [Required]
+            public string Username { get; set; } = string.Empty;
+
+            [Required, EmailAddress]
+            public string Email { get; set; } = string.Empty;
+
+            public string FullName { get; set; } = string.Empty;
+
+            [Required]
+            public string Password { get; set; } = string.Empty;
         }
 
         public class LoginRequest
         {
-            public string Username { get; set; }
-            public string Password { get; set; }
+            [Required]
+            public string Username { get; set; } = string.Empty;
+
+            [Required]
+            public string Password { get; set; } = string.Empty;
         }
     }
-
 }

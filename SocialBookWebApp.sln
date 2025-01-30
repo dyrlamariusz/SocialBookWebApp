@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PeopleAPI", "PeopleAPI\Peop
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PostAPI", "PostAPI\PostAPI.csproj", "{377F40D7-623C-4842-8CB2-5066459E8C19}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SocialBook", "SocialBook\SocialBook.csproj", "{F3498F83-CD94-4A6E-9F5D-30030CDE3FBE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SocialBook", "SocialBook\SocialBook.csproj", "{F3498F83-CD94-4A6E-9F5D-30030CDE3FBE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

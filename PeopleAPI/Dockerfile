@@ -15,5 +15,5 @@ WORKDIR /app
 COPY --from=build /app ./
 
 # Expose the required port and set the entry point
-EXPOSE 8080
+EXPOSE 8080 5002
 ENTRYPOINT ["dotnet", "PeopleAPI.dll"]

@@ -3,64 +3,89 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PeopleAPI.Data;
 using PeopleAPI.Models;
+using System;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace PeopleAPI.Controllers
 {
+    [Authorize]
     [ApiController]
-    [Route("api/[controller]")]
-    public class FriendController : ControllerBase
+    [Route("api/people")]
+    public class PeopleController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
 
-        public FriendController(ApplicationDbContext context)
+        public PeopleController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        [HttpPost("send")]
+        [HttpGet("suggested")]
         [Authorize]
-        public async Task<IActionResult> SendFriendRequest([FromBody] FriendRequest request)
+        public async Task<IActionResult> GetSuggestedFriends()
         {
-            request.Id = Guid.NewGuid();
-            request.Status = "Pending";
-            request.CreatedAt = DateTime.UtcNow;
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString))
+                return Unauthorized("Nie można znaleźć użytkownika.");
 
-            _context.FriendRequests.Add(request);
-            await _context.SaveChangesAsync();
+            if (!Guid.TryParse(userIdString, out Guid userId))
+                return BadRequest("Nieprawidłowy identyfikator użytkownika.");
 
-            return Ok("Zaproszenie wysłane.");
+            var allUsers = await _context.Users
+                .Where(u => u.Id != userId) //UPEWNIC SIE ZE W BAZIE JEST STRIGNIEM userId.ParseToString
+                .ToListAsync();
+
+            return Ok(allUsers);
         }
 
-        [HttpPatch("{id}/accept")]
-        [Authorize]
-        public async Task<IActionResult> AcceptFriendRequest(Guid id)
-        {
-            var request = await _context.FriendRequests.FirstOrDefaultAsync(fr => fr.Id == id);
-            if (request == null)
-            {
-                return NotFound("Zaproszenie nie istnieje.");
-            }
 
-            request.Status = "Accepted";
+        // ✅ Dodawanie znajomego
+        [HttpPost("{friendId}/add")]
+        [Authorize]
+        public async Task<IActionResult> AddFriend(string friendId)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString))
+                return Unauthorized("Nie można znaleźć użytkownika.");
+
+            if (!Guid.TryParse(userIdString, out Guid userId))
+                return BadRequest("Nieprawidłowy identyfikator użytkownika.");
+
+            if (!Guid.TryParse(friendId, out Guid friendGuid))
+                return BadRequest("Nieprawidłowy identyfikator znajomego.");
+
+            if (userId == friendGuid)
+                return BadRequest("Nie możesz dodać siebie do znajomych.");
+
+            // Znajdź profil użytkownika
+            var userProfile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
+            var friendProfile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == friendGuid);
+
+            if (userProfile == null || friendProfile == null)
+                return NotFound("Nie znaleziono użytkownika lub znajomego.");
+
+            // Upewnij się, że znajomość jeszcze nie istnieje
+            var existingFriendship = await _context.Friendships.FirstOrDefaultAsync(f =>
+                (f.UserId == userId && f.FriendId == friendGuid) ||
+                (f.UserId == friendGuid && f.FriendId == userId));
+
+            if (existingFriendship != null)
+                return BadRequest("Już jesteście znajomymi.");
+
+            // Tworzenie nowej znajomości
+            var friendship = new Friendship
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                FriendId = friendGuid
+            };
+
+            _context.Friendships.Add(friendship);
             await _context.SaveChangesAsync();
 
-            return Ok("Zaproszenie zaakceptowane.");
-        }
-
-        [HttpPatch("{id}/reject")]
-        [Authorize]
-        public async Task<IActionResult> RejectFriendRequest(Guid id)
-        {
-            var request = await _context.FriendRequests.FirstOrDefaultAsync(fr => fr.Id == id);
-            if (request == null)
-            {
-                return NotFound("Zaproszenie nie istnieje.");
-            }
-
-            request.Status = "Rejected";
-            await _context.SaveChangesAsync();
-
-            return Ok("Zaproszenie odrzucone.");
+            return Ok("Dodano do znajomych.");
         }
     }
 }

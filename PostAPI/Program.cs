@@ -1,23 +1,44 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using PostAPI.Data;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
 // Dodanie DbContext i konfiguracji bazy danych
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"), sqlOptions =>
+        sqlOptions.EnableRetryOnFailure()
+    ));
+
 
 // Konfiguracja JWT
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
-        options.Authority = "https://localhost:5001"; // Adres IdentityAPI
+        options.Authority = "http://localhost:5001"; // Adres IdentityAPI
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateAudience = false
         };
+
+        // Wyłączenie wymogu HTTPS dla środowiska deweloperskiego
+        options.RequireHttpsMetadata = false;
     });
+
 
 // Dodanie Swaggera
 builder.Services.AddEndpointsApiExplorer();
@@ -73,9 +94,55 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+app.UseCors("AllowAll");
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "http://localhost:5001"; // IdentityAPI URL
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "IdentityAPI",
+            ValidAudience = "SocialBook",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("SuperSecretKey123456789JWTSuperSekretnyKlucz"))
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        context.Database.Migrate();  // ✅ Applies migrations to `PostDB`
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"PostAPI migration failed: {ex.Message}");
+    }
+}
+
 
 app.Run();

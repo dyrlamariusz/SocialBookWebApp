@@ -31,7 +31,7 @@
                 errorMessage = null;
                 var token = await IdentityService.Login(loginModel.Username, loginModel.Password);
 
-                if (!string.IsNullOrEmpty(token))
+                if (token != null) // ✅ Check for null instead of empty string
                 {
                     AuthenticationStateProvider.SetToken(token);
                     NavigationManager.NavigateTo("/");
@@ -46,12 +46,13 @@
                 errorMessage = $"Error: {ex.Message}";
             }
         }
+
     }
 
 
-    private class LoginModel
-    {
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-    }
+        private class LoginModel
+        {
+            public string Username { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
+        }
 }

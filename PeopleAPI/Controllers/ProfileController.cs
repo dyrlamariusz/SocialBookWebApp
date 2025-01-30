@@ -2,12 +2,16 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PeopleAPI.Data;
+using PeopleAPI.DTOs;
 using PeopleAPI.Models;
+using PeopleAPI.Models.DTOs;
+using System.Security.Claims;
 
 namespace PeopleAPI.Controllers
 {
+    [Authorize]
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/profile")]
     public class ProfileController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -17,39 +21,53 @@ namespace PeopleAPI.Controllers
             _context = context;
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("profile")]
         [Authorize]
-        public async Task<IActionResult> GetProfile(Guid id)
+        public async Task<IActionResult> GetCurrentUserProfile()
         {
-            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Id == id);
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid.TryParse(userIdString, out Guid userId);
+            var profile = await _context.Profiles
+                .Include(p => p.SentFriendships)
+                    .ThenInclude(f => f.Friend)
+                .Include(p => p.ReceivedFriendships)
+                    .ThenInclude(f => f.User)
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+
             if (profile == null)
-            {
                 return NotFound("Profil nie znaleziony.");
-            }
 
-            return Ok(profile);
-        }
-
-        [HttpPost]
-        [Authorize]
-        public async Task<IActionResult> CreateProfile([FromBody] Profile profile)
-        {
-            profile.Id = Guid.NewGuid();
-            _context.Profiles.Add(profile);
-            await _context.SaveChangesAsync();
-
-            return Ok(profile);
-        }
-
-        [HttpPut("{id}")]
-        [Authorize]
-        public async Task<IActionResult> UpdateProfile(Guid id, [FromBody] Profile updatedProfile)
-        {
-            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.Id == id);
-            if (profile == null)
+            var userDto = new UserDto
             {
-                return NotFound("Profil nie istnieje.");
-            }
+                Id = profile.UserId,
+                FullName = profile.FullName,
+                Email = profile.Email,
+                Friends = profile.SentFriendships.Select(f => new FriendDto
+                {
+                    Id = f.Friend.UserId,
+                    FullName = f.Friend.FullName
+                })
+                .Concat(profile.ReceivedFriendships.Select(f => new FriendDto
+                {
+                    Id = f.User.UserId,
+                    FullName = f.User.FullName
+                }))
+                .ToList()
+            };
+
+            return Ok(userDto);
+        }
+
+        [HttpPut]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] Profile updatedProfile)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid.TryParse(userIdString, out Guid userId);
+            if (userId == null) return Unauthorized("Nie można znaleźć użytkownika.");
+
+            var profile = await _context.Profiles.FirstOrDefaultAsync(p => p.UserId == userId);
+            if (profile == null) return NotFound("Profil nie istnieje.");
 
             profile.FullName = updatedProfile.FullName;
             profile.Bio = updatedProfile.Bio;

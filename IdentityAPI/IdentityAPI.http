@@ -1,4 +1,4 @@
-@IdentityAPI_HostAddress = https://localhost:5001
+@IdentityAPI_HostAddress = http://localhost:5001
 
 GET {{IdentityAPI_HostAddress}}
 Accept: application/json

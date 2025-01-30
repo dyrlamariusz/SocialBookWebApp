@@ -1,26 +1,34 @@
 ﻿@page "/profile"
+@using SocialBook.Models
 @attribute [Authorize]
 @inject PeopleService PeopleService
 
-<h3>Profile</h3>
+<h3>My Profile</h3>
 
-@if (profile == null)
+@if (user == null)
 {
     <p>Loading profile...</p>
 }
 else
 {
-    <p>Full Name: @profile.fullName</p>
-    <p>Bio: @profile.bio</p>
+    <div>
+        <h4>@user.FullName</h4>
+        <p>Email: @user.Email</p>
+        <h5>Friends:</h5>
+        <ul>
+            @foreach (var friend in user.Friends)
+            {
+                <li>@friend.FullName</li>
+            }
+        </ul>
+    </div>
 }
 
-<button @onclick="LoadProfile">Load Profile</button>
-
 @code {
-    private dynamic profile;
+    private UserDto user;
 
-    private async Task LoadProfile()
+    protected override async Task OnInitializedAsync()
     {
-        profile = await PeopleService.GetProfile("user-id");
+        user = await PeopleService.GetCurrentUserProfile();
     }
 }
