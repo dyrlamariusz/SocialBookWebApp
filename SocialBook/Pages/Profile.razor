@@ -1,0 +1,34 @@
+﻿@page "/profile"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PeopleService PeopleService
+
+<h3>My Profile</h3>
+
+@if (user == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+    <div>
+        <h4>@user.FullName</h4>
+        <p>Email: @user.Email</p>
+        <h5>Friends:</h5>
+        <ul>
+            @foreach (var friend in user.Friends)
+            {
+                <li>@friend.FullName</li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    private UserDto user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await PeopleService.GetCurrentUserProfile();
+    }
+}

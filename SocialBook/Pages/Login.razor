@@ -1,0 +1,58 @@
+﻿@page "/login"
+@inject IdentityService IdentityService
+@inject CustomAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+
+<h3>Login</h3>
+
+<EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="loginModel.Username" Placeholder="Username" />
+    <InputText @bind-Value="loginModel.Password" Placeholder="Password" InputType="password" />
+    <button type="submit">Login</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p style="color: red;">@errorMessage</p>
+}
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+
+    @code {
+        private async Task HandleLogin()
+        {
+            try
+            {
+                errorMessage = null;
+                var token = await IdentityService.Login(loginModel.Username, loginModel.Password);
+
+                if (token != null)
+                {
+                    AuthenticationStateProvider.SetToken(token);
+                    NavigationManager.NavigateTo("/");
+                }
+                else
+                {
+                    errorMessage = "Invalid login credentials.";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Error: {ex.Message}";
+            }
+        }
+
+    }
+
+
+        private class LoginModel
+        {
+            public string Username { get; set; } = string.Empty;
+            public string Password { get; set; } = string.Empty;
+        }
+}

@@ -1,0 +1,69 @@
+﻿@page "/register"
+@inject IdentityService IdentityService
+@inject NavigationManager NavigationManager
+
+<h3>Register</h3>
+
+<EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="registerModel.Username" Placeholder="Username" />
+    <InputText @bind-Value="registerModel.Email" Placeholder="Email" />
+    <InputText @bind-Value="registerModel.FullName" Placeholder="Full Name" />
+    <InputText @bind-Value="registerModel.Password" Placeholder="Password" InputType="password" />
+    <button type="submit">Register</button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <p style="color: green;">@successMessage</p>
+}
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <p style="color: red;">@errorMessage</p>
+}
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? successMessage;
+    private string? errorMessage;
+
+    private async Task HandleRegister()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await IdentityService.Register(
+                registerModel.Username,
+                registerModel.Email,
+                registerModel.FullName,
+                registerModel.Password);
+
+            if (result)
+            {
+                successMessage = "Registration successful. You can now log in.";
+            }
+            else
+            {
+                errorMessage = "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // Obsługa błędów z API
+            errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+
+    private class RegisterModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

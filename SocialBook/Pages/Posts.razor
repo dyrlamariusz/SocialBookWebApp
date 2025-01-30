@@ -1,0 +1,67 @@
+﻿@page "/posts"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PostService PostService
+
+<h3>Posts</h3>
+
+@if (posts == null)
+{
+    <p>Loading posts...</p>
+}
+else if (posts.Count == 0)
+{
+    <p>No posts yet. Be the first to post something!</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var post in posts)
+        {
+            <li class="list-group-item">
+                <strong>@post.AuthorName</strong>: @post.Content
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => LikePost(post.Id)">Like (@post.Likes)</button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => ToggleComment(post.Id)">Comment</button>
+                </div>
+                @if (commentVisibility.Contains(post.Id))
+                {
+                    <textarea class="form-control mt-2" @bind="newComment" placeholder="Write a comment..."></textarea>
+                    <button class="btn btn-primary mt-1" @onclick="() => AddComment(post.Id)">Post Comment</button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<PostDto> posts;
+    private HashSet<string> commentVisibility = new();
+    private string newComment = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        posts = await PostService.GetAllPosts();
+    }
+
+    private async Task LikePost(string postId)
+    {
+        await PostService.LikePost(postId);
+        posts = await PostService.GetAllPosts();
+    }
+
+    private void ToggleComment(string postId)
+    {
+        if (commentVisibility.Contains(postId))
+            commentVisibility.Remove(postId);
+        else
+            commentVisibility.Add(postId);
+    }
+
+    private async Task AddComment(string postId)
+    {
+        await PostService.AddComment(postId, newComment);
+        posts = await PostService.GetAllPosts();
+        newComment = "";
+    }
+}

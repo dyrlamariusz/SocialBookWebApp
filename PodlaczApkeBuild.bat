@@ -1,0 +1,1 @@
+powershell -Command "Start-Process 'docker' -ArgumentList 'compose up --build' -NoNewWindow; Start-Sleep -Seconds 5; Start-Process 'dotnet' -ArgumentList 'run --project SocialBook'; Start-Sleep -Seconds 2; Start-Process 'http://localhost:5174/'"
