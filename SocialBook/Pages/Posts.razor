@@ -1,0 +1,102 @@
+﻿@page "/posts"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PostService PostService
+@inject DockerServiceChecker dockerChecker
+
+<h3>Posts</h3>
+
+@if (!isPostApiAvailable)
+{
+    <div class="alert alert-danger text-center">
+        <h4>⚠ PostAPI is not available!</h4>
+        <p>Posts cannot be retrieved at this time.</p>
+    </div>
+}
+else if (posts == null)
+{
+    <p>Loading posts...</p>
+}
+else if (posts.Count == 0)
+{
+    <p>No posts yet. Be the first to post something!</p>
+}
+else
+{
+    <ul class="list-group">
+        @foreach (var post in posts)
+        {
+            <li class="list-group-item">
+                <strong>@post.AuthorName</strong>: @post.Content
+                <div>
+                    <button class="btn btn-outline-primary btn-sm" @onclick="() => LikePost(post.Id)">Like (@post.Likes)</button>
+                    <button class="btn btn-outline-secondary btn-sm" @onclick="() => ToggleComment(post.Id)">Comment</button>
+                </div>
+                @if (commentVisibility.Contains(post.Id))
+                {
+                    <textarea class="form-control mt-2" @bind="newComment" placeholder="Write a comment..."></textarea>
+                    <button class="btn btn-primary mt-1" @onclick="() => AddComment(post.Id)">Post Comment</button>
+                }
+            </li>
+        }
+    </ul>
+}
+
+@code {
+    private List<PostDto> posts;
+    private HashSet<string> commentVisibility = new();
+    private string newComment = "";
+    private bool isPostApiAvailable = true;
+    private PeriodicTimer apiCheckTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckApiAvailability();
+
+        if (isPostApiAvailable)
+        {
+            posts = await PostService.GetAllPosts();
+        }
+
+        _ = MonitorApiStatus();
+    }
+
+    private async Task MonitorApiStatus()
+    {
+        while (await apiCheckTimer.WaitForNextTickAsync())
+        {
+            await CheckApiAvailability();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CheckApiAvailability()
+    {
+        isPostApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-post-api-1");
+    }
+
+    private async Task LikePost(string postId)
+    {
+        if (!isPostApiAvailable) return;
+
+        await PostService.LikePost(postId);
+        posts = await PostService.GetAllPosts();
+    }
+
+    private void ToggleComment(string postId)
+    {
+        if (commentVisibility.Contains(postId))
+            commentVisibility.Remove(postId);
+        else
+            commentVisibility.Add(postId);
+    }
+
+    private async Task AddComment(string postId)
+    {
+        if (!isPostApiAvailable) return;
+
+        await PostService.AddComment(postId, newComment);
+        posts = await PostService.GetAllPosts();
+        newComment = "";
+    }
+}

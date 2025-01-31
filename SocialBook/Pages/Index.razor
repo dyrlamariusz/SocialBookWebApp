@@ -1,0 +1,152 @@
+﻿@page "/"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PostService PostService
+@inject PeopleService PeopleService
+@inject IdentityService IdentityService
+@inject HttpClient Http
+
+<PageTitle>Home</PageTitle>
+
+@if (!isIdentityApiAvailable)
+{
+    <div class="alert alert-danger text-center">
+        <h4>⚠ IdentityAPI is not available!</h4>
+        <p>Please start IdentityAPI to use the application.</p>
+    </div>
+}
+
+<h1>Welcome, @userName!</h1>
+
+<button class="btn btn-info mb-3" @onclick="CheckServiceAvailability">
+    🔄 Sprawdź dostępność usług
+</button>
+
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+            <h3>Create a new post</h3>
+            <textarea class="form-control" @bind="newPostContent" placeholder="What's on your mind?"></textarea>
+            <button class="btn btn-primary mt-2" @onclick="CreatePost">Post</button>
+
+            <h3 class="mt-4">Latest Posts</h3>
+            @if (!isPostApiAvailable)
+            {
+                <p class="text-danger">⚠ PostAPI is currently unavailable.</p>
+            }
+            else if (posts == null)
+            {
+                <p>Loading posts...</p>
+            }
+            else if (posts.Count == 0)
+            {
+                <p>No posts yet. Be the first to post something!</p>
+            }
+            else
+            {
+                <ul class="list-group">
+                    @foreach (var post in posts)
+                    {
+                        <li class="list-group-item">
+                            <strong>@post.AuthorName</strong>: @post.Content
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+
+        @if (isPeopleApiAvailable)
+        {
+            <div class="col-md-4">
+                <h3>People You May Know</h3>
+                @if (suggestedFriends == null)
+                {
+                    <p>Loading...</p>
+                }
+                else if (suggestedFriends.Count == 0)
+                {
+                    <p>No new people to add.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var friend in suggestedFriends)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                @friend.FullName
+                                <button class="btn btn-success btn-sm" @onclick="() => AddFriend(friend.Id)">Add</button>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private string userName = "User";
+    private List<PostDto> posts;
+    private List<UserDto> suggestedFriends;
+    private string newPostContent = "";
+
+    private UserDto currentUser;
+    private bool isPeopleApiAvailable = false;
+    private bool isPostApiAvailable = false;
+    private bool isIdentityApiAvailable = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckServiceAvailability();
+
+        currentUser = await IdentityService.GetCurrentUser();
+        userName = currentUser?.FullName ?? "User";
+
+        if (isPostApiAvailable)
+        {
+            posts = await PostService.GetAllPosts();
+        }
+
+        if (isPeopleApiAvailable)
+        {
+            suggestedFriends = await PeopleService.GetSuggestedFriends();
+        }
+    }
+
+    private async Task CheckServiceAvailability()
+    {
+        var dockerChecker = new DockerServiceChecker();
+
+        isIdentityApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-identity-api-1");
+        isPeopleApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-people-api-1");
+        isPostApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-post-api-1");
+
+        StateHasChanged();
+    }
+
+    private async Task CreatePost()
+    {
+        if (!isPostApiAvailable)
+        {
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(newPostContent))
+        {
+            await PostService.CreatePost(newPostContent);
+            posts = await PostService.GetAllPosts();
+            newPostContent = "";
+        }
+    }
+
+    private async Task AddFriend(string friendId)
+    {
+        if (!isPeopleApiAvailable)
+        {
+            return;
+        }
+
+        await PeopleService.AddFriend(friendId);
+        suggestedFriends = await PeopleService.GetSuggestedFriends();
+    }
+}

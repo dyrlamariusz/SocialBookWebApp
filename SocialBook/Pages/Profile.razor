@@ -1,0 +1,53 @@
+﻿@page "/profile"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PeopleService PeopleService
+
+<h3>My Profile</h3>
+
+@if (user == null)
+{
+    <p>Loading profile...</p>
+}
+else
+{
+    <div>
+        <h4>@user.FullName</h4>
+        <p>Email: @user.Email</p>
+        <h5>Friends:</h5>
+        <ul>
+            @foreach (var friend in user.Friends)
+            {
+                <li>@friend.FullName</li>
+            }
+        </ul>
+
+        <h5>Edit Profile</h5>
+        <input @bind="user.FullName" placeholder="Full Name" />
+        <input @bind="user.Email" placeholder="Email" />
+
+        <button @onclick="SaveProfile">Save</button>
+    </div>
+}
+
+@code {
+    private UserDto user;
+
+    protected override async Task OnInitializedAsync()
+    {
+        user = await PeopleService.GetCurrentUserProfile();
+    }
+
+    private async Task SaveProfile()
+    {
+        bool success = await PeopleService.UpdateProfile(user);
+        if (success)
+        {
+            Console.WriteLine("Profile updated successfully!");
+        }
+        else
+        {
+            Console.WriteLine("Error updating profile.");
+        }
+    }
+}

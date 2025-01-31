@@ -1,0 +1,106 @@
+﻿@page "/register"
+@inject IdentityService IdentityService
+@inject NavigationManager NavigationManager
+@inject DockerServiceChecker dockerChecker
+
+<h3>Register</h3>
+
+@if (!isIdentityApiAvailable)
+{
+    <div class="alert alert-danger text-center">
+        <h4>⚠ IdentityAPI is not available!</h4>
+        <p>Please start IdentityAPI to register.</p>
+    </div>
+}
+else
+{
+    <EditForm Model="@registerModel" OnValidSubmit="HandleRegister">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputText @bind-Value="registerModel.Username" Placeholder="Username" />
+        <InputText @bind-Value="registerModel.Email" Placeholder="Email" />
+        <InputText @bind-Value="registerModel.FullName" Placeholder="Full Name" />
+        <InputText @bind-Value="registerModel.Password" Placeholder="Password" InputType="password" />
+        <button type="submit" class="btn btn-primary">Register</button>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(successMessage))
+    {
+        <p style="color: green;">@successMessage</p>
+    }
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color: red;">@errorMessage</p>
+    }
+}
+
+@code {
+    private RegisterModel registerModel = new();
+    private string? successMessage;
+    private string? errorMessage;
+    private bool isIdentityApiAvailable = true;
+    private PeriodicTimer apiCheckTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckApiAvailability();
+        _ = MonitorApiStatus();
+    }
+
+    private async Task MonitorApiStatus()
+    {
+        while (await apiCheckTimer.WaitForNextTickAsync())
+        {
+            await CheckApiAvailability();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CheckApiAvailability()
+    {
+        isIdentityApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-identity-api-1");
+    }
+
+    private async Task HandleRegister()
+    {
+        if (!isIdentityApiAvailable)
+        {
+            errorMessage = "IdentityAPI is unavailable. Cannot register.";
+            return;
+        }
+
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            var result = await IdentityService.Register(
+                registerModel.Username,
+                registerModel.Email,
+                registerModel.FullName,
+                registerModel.Password);
+
+            if (result)
+            {
+                successMessage = "Registration successful. You can now log in.";
+            }
+            else
+            {
+                errorMessage = "Registration failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private class RegisterModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,46 @@
+﻿@page "/friends"
+@using SocialBook.Models
+@attribute [Authorize]
+@inject PeopleService PeopleService
+
+<h3>Friend Requests</h3>
+
+@if (requests == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <ul>
+        @foreach (var friendRequest in requests)
+        {
+            <li>
+                <span>@friendRequest.SenderId</span>
+                <button @onclick="() => AcceptRequest(friendRequest.Id)">Accept</button>
+                <button @onclick="() => RejectRequest(friendRequest.Id)">Reject</button>
+            </li>
+        }
+    </ul>
+
+}
+
+@code {
+    private List<FriendRequest> requests;
+
+    protected override async Task OnInitializedAsync()
+    {
+        requests = await PeopleService.GetPendingFriendRequests();
+    }
+
+    private async Task AcceptRequest(string requestId)
+    {
+        await PeopleService.AcceptFriendRequest(requestId);
+        requests = await PeopleService.GetPendingFriendRequests();
+    }
+
+    private async Task RejectRequest(string requestId)
+    {
+        await PeopleService.RejectFriendRequest(requestId);
+        requests = await PeopleService.GetPendingFriendRequests();
+    }
+}

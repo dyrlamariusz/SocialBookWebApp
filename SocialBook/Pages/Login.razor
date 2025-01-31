@@ -1,0 +1,93 @@
+﻿@page "/login"
+@inject IdentityService IdentityService
+@inject CustomAuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager NavigationManager
+@inject DockerServiceChecker dockerChecker
+
+<h3>Login</h3>
+
+@if (!isIdentityApiAvailable)
+{
+    <div class="alert alert-danger text-center">
+        <h4>⚠ IdentityAPI is not available!</h4>
+        <p>Please start IdentityAPI to log in.</p>
+    </div>
+}
+else
+{
+    <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <InputText @bind-Value="loginModel.Username" Placeholder="Username" />
+        <InputText @bind-Value="loginModel.Password" Placeholder="Password" InputType="password" />
+        <button type="submit">Login</button>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <p style="color: red;">@errorMessage</p>
+    }
+}
+
+@code {
+    private LoginModel loginModel = new();
+    private string? errorMessage;
+    private bool isIdentityApiAvailable = true;
+    private PeriodicTimer apiCheckTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CheckApiAvailability();
+        _ = MonitorApiStatus();
+    }
+
+    private async Task MonitorApiStatus()
+    {
+        while (await apiCheckTimer.WaitForNextTickAsync())
+        {
+            await CheckApiAvailability();
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task CheckApiAvailability()
+    {
+        isIdentityApiAvailable = await dockerChecker.IsContainerRunning("socialbookwebapp-master-identity-api-1");
+    }
+
+    private async Task HandleLogin()
+    {
+        if (!isIdentityApiAvailable)
+        {
+            errorMessage = "IdentityAPI is unavailable. Cannot log in.";
+            return;
+        }
+
+        try
+        {
+            errorMessage = null;
+            var token = await IdentityService.Login(loginModel.Username, loginModel.Password);
+
+            if (token != null)
+            {
+                AuthenticationStateProvider.SetToken("Bearer " + token);
+                NavigationManager.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Invalid login credentials.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}
