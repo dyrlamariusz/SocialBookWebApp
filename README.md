@@ -1,4 +1,4 @@
-# 🚀 How to Start the Project
+# 🚀 How to start the app
 
 ## 1️⃣ Open the Terminal  
 Navigate to the **main project folder** (where `docker-compose.yml` is located).
