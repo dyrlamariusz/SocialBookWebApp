@@ -1,20 +1,22 @@
-🚀 How to Start the Project
+# 🚀 How to Start the Project
 
-1️⃣ Open a terminal in the main project folder (where docker-compose.yml is located).
+## 1️⃣ Open the Terminal  
+Navigate to the **main project folder** (where `docker-compose.yml` is located).
 
-2️⃣ Run the following command to build and start the containers:
-
+## 2️⃣ Build and Start Containers  
+Run the following command:  
+```sh
 docker-compose up --build
+```
 
-3️⃣ Once all containers are running, start the application by running:
-
+## 3️⃣ Once all containers are running, start the application by running:
+```sh
 dotnet run --project SocialBook
+```
+## 4️⃣ Alternatively, you can use the script:
+Run `PodlaczApkeBuild.bat` to automate the process.
 
-4️⃣ Alternatively, you can use the script:
-
-Run PodlaczApkeBuild.bat to automate the process.
-
-🛠 Troubleshooting
+# 🛠 Troubleshooting
 
 🔹 Port conflicts?
 
